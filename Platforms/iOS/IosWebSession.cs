@@ -7,7 +7,8 @@ namespace LamaERP.Mobile.WebApp.Platforms.iOS;
 /// <summary>
 /// iOS cookie bridge over the default <see cref="WKWebsiteDataStore"/> cookie store, which the
 /// app's WKWebView shares. Exposes httpOnly cookies to native code, so no WebView instance is
-/// required. All operations are async with completion handlers, wrapped as Tasks here.
+/// required. The single store holds one account's session at a time; this swaps the active
+/// account's cookies in/out, keyed by account id.
 /// </summary>
 public sealed class IosWebSession : IWebSession
 {
@@ -17,10 +18,12 @@ public sealed class IosWebSession : IWebSession
 
     private static WKHttpCookieStore CookieStore => WKWebsiteDataStore.DefaultDataStore.HttpCookieStore;
 
-    public async Task RestoreAsync(string url)
+    public async Task SwitchToAsync(string accountId, string url)
     {
         var host = HostOf(url);
-        var saved = await _store.LoadAsync(host);
+        await ClearHostAsync(host);
+
+        var saved = await _store.LoadAsync(accountId);
         if (string.IsNullOrEmpty(saved)) return;
 
         foreach (var pair in saved.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -37,28 +40,33 @@ public sealed class IosWebSession : IWebSession
                 [NSHttpCookie.KeySecure] = new NSString("TRUE"),
             };
 
-            var cookie = new NSHttpCookie(props);
-            await SetCookieAsync(cookie);
+            await SetCookieAsync(new NSHttpCookie(props));
         }
     }
 
-    public async Task CaptureAsync(string url)
+    public async Task CaptureAsync(string accountId, string url)
     {
         var host = HostOf(url);
         var cookies = await GetAllAsync();
-        var parts = cookies
+        var header = string.Join("; ", cookies
             .Where(c => DomainMatches(host, c.Domain))
-            .Select(c => $"{c.Name}={c.Value}");
-        await _store.SaveAsync(host, string.Join("; ", parts));
+            .Select(c => $"{c.Name}={c.Value}"));
+        // Never overwrite a saved session with a logged-out/empty jar (e.g. on the login page).
+        if (!AuthCookies.HasSession(header)) return;
+        await _store.SaveAsync(accountId, header);
     }
 
-    public async Task ClearAsync(string url)
+    public async Task ClearAsync(string accountId, string url)
     {
-        var host = HostOf(url);
+        await ClearHostAsync(HostOf(url));
+        _store.Remove(accountId);
+    }
+
+    private async Task ClearHostAsync(string host)
+    {
         var cookies = await GetAllAsync();
         foreach (var c in cookies.Where(c => DomainMatches(host, c.Domain)))
             await DeleteCookieAsync(c);
-        _store.Remove(host);
     }
 
     private Task SetCookieAsync(NSHttpCookie cookie)

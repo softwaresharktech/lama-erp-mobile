@@ -5,6 +5,9 @@ organization address, the app resolves the tenant against the backend, then load
 own web app (login + everything after) inside a WebView. The native layer only handles the
 identifier step, multi-account switching, and securely persisting the session.
 
+Accounts are **per user, not per tenant** — several users of the *same* tenant can be signed in at
+once and switched between, each keeping its own saved session.
+
 - **Project:** `LamaERP.Mobile.WebApp` · **App ID:** `com.lamaerp.mobile`
 - **Targets:** `net10.0-android`, `net10.0-windows10.0.19041.0` (`net10.0-ios` on macOS)
 - **Production host:** each org is served at `https://{domain}` (e.g. `myorg.lamaerp.com`),
@@ -29,17 +32,35 @@ identifier step, multi-account switching, and securely persisting the session.
 - Injected JS (`WebBridge`) tags every API call with **`X-Client-Type: mobile`** so the backend
   grants the longer mobile refresh-token lifetime on login/refresh, and exposes `window.LamaMobile`
   (Switch account hook + `lamaerpapp://` command scheme) and a touch **pull-to-refresh**.
-- The httpOnly cookies are mirrored natively into **SecureStorage** after each navigation
-  (`IWebSession.CaptureAsync`) and restored before load (`RestoreAsync`); switching restores the
-  selected account's session. Platform impls: Android `CookieManager`, iOS `WKHTTPCookieStore`,
-  Windows (WebView2 persists its own jar).
+- All accounts of one tenant share an origin — and therefore **one cookie jar** — so only one session
+  can be live in the jar at a time. `IWebSession` keeps a per-account encrypted copy in SecureStorage
+  (keyed by `Account.Id`) and **swaps** the active account's cookies in/out of the jar on every load:
+  - `SwitchToAsync(accountId, url)` — clears the host's cookies, then loads that account's saved set.
+  - `CaptureAsync(accountId, url)` — saves the jar's current cookies (incl. freshly-issued tokens).
+    It **ignores an auth-less jar** (e.g. the login page) so visiting login never wipes a saved session.
+  - `ClearAsync(accountId, url)` — empties the jar + forgets the saved session (fresh login / logout).
+  - Platform impls: Android `CookieManager`, iOS `WKHTTPCookieStore`, Windows WebView2
+    `CoreWebView2.CookieManager` (the live control is handed to the session by the page).
+
+### Multiple users of the same tenant
+- Each sign-in is a distinct **`Account`** with a stable GUID `Id` (not the tenant), so two users of
+  one tenant coexist. `SessionStore` and the avatar cache are keyed by that `Id`.
+- **Adding** a user (identifier **+**) mints a new account and force-clears the jar, so the tenant's
+  **login page** shows instead of resuming the existing user.
+- On reaching `/portal`, the shell asks the backend who actually signed in — **`GET /api/auth/me`**
+  (id, name, email) and **`GET /api/users/me`** (photo), sent with the captured cookies
+  (`UserProfileService`). The user **id** de-dupes accounts: signing in again as a user that's already
+  saved shows an **"Already added"** notice instead of creating a duplicate.
+- The account picker shows the **user's name**, an **email · tenant** second line, and their **photo**
+  (initial-letter fallback) so two users of one tenant are distinguishable.
 
 ### Key files
 | Area | File |
 |------|------|
 | Origins / prod vs local | `Services/AppConfig.cs` |
-| Multi-account store | `Services/AccountStore.cs`, `Services/Account.cs` |
-| SecureStorage cookie backup | `Services/SessionStore.cs`, `Services/IWebSession.cs`, `Platforms/*/...WebSession.cs` |
+| Multi-account store (keyed by `Account.Id`) | `Services/AccountStore.cs`, `Services/Account.cs` |
+| Per-account session swap + SecureStorage backup | `Services/SessionStore.cs`, `Services/IWebSession.cs`, `Services/AuthCookies.cs`, `Platforms/*/...WebSession.cs` |
+| Signed-in user identity + cached avatar (`/api/auth/me`, `/api/users/me`) | `Services/UserProfileService.cs` |
 | Injected JS (mobile header, switch hook, pull-to-refresh) | `Services/WebBridge.cs` |
 | Pages | `Pages/IdentifierPage.*`, `Pages/WebAppPage.*`, `Pages/AccountsPage.*` |
 | Web portal hooks (separate repo) | `frontend/tenant/src/components/PortalTopBar.vue`, `frontend/tenant/src/pages/apps/AppLauncher.vue` |
@@ -161,4 +182,6 @@ Then re-run the install. Approve any on-device popup.
 | Windows build error: file in use / locked exe | Kill the running app first (`Stop-Process` above) |
 | Resolve returns 404 | You entered the platform host; use an actual org subdomain (`myorg.lamaerp.com`) |
 | Logged out after relaunch | Cookies are `Secure`; only persist over HTTPS. Use a real https origin |
+| Adding a 2nd user of a tenant lands on the 1st user's portal | The add path force-clears the jar to show login — if it doesn't, a stale build is running; rebuild |
+| Account shows the tenant name, no email/photo | `GET /api/auth/me` / `/api/users/me` failed for that session — name/photo backfill on next portal load |
 | Switch account / mobile list missing in web | Rebuild & redeploy the tenant frontend to `lamaerp.com` |

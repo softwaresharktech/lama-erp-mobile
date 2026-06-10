@@ -43,6 +43,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<SessionStore>();
         builder.Services.AddSingleton<TenantResolver>();
         builder.Services.AddSingleton<OrgBranding>();
+        builder.Services.AddSingleton<UserProfileService>();
 
         // Platform cookie bridge (JWT cookies <-> SecureStorage)
 #if ANDROID

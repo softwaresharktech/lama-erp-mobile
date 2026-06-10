@@ -74,7 +74,7 @@
                             <TapGestureRecognizer Tapped="OnAccountTapped" />
                         </Grid.GestureRecognizers>
 
-                        <!-- Avatar -->
+                        <!-- Avatar: the user's photo when we have it, otherwise their initial -->
                         <Border Grid.Column="0"
                                 WidthRequest="44" HeightRequest="44"
                                 BackgroundColor="{StaticResource Primary}"
@@ -82,13 +82,21 @@
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="22" />
                             </Border.StrokeShape>
-                            <Label Text="{Binding Initial}"
-                                   TextColor="{StaticResource TextOnPrimary}"
-                                   FontFamily="JakartaSans"
-                                   FontSize="18"
-                                   FontAttributes="Bold"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center" />
+                            <Grid>
+                                <Label Text="{Binding Initial}"
+                                       IsVisible="{Binding ShowInitial}"
+                                       TextColor="{StaticResource TextOnPrimary}"
+                                       FontFamily="JakartaSans"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                                <Image Source="{Binding Avatar}"
+                                       IsVisible="{Binding HasAvatar}"
+                                       Aspect="AspectFill"
+                                       WidthRequest="44"
+                                       HeightRequest="44" />
+                            </Grid>
                         </Border>
 
                         <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
@@ -98,7 +106,7 @@
                                    FontAttributes="Bold"
                                    TextColor="{StaticResource TextPrimary}"
                                    LineBreakMode="TailTruncation" />
-                            <Label Text="{Binding Account.Domain}"
+                            <Label Text="{Binding Subtitle}"
                                    FontFamily="JakartaSans"
                                    FontSize="13"
                                    TextColor="{StaticResource TextTertiary}"

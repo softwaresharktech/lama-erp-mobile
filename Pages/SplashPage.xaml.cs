@@ -20,10 +20,10 @@ public partial class SplashPage : ContentPage
 
         // On launch, resume the selected account; if none is selected (e.g. after logout) but
         // accounts exist, auto-pick the most-recent one. Show THAT org's cached logo on the splash.
-        var resumeDomain = _accounts.ActiveDomain ?? _accounts.All.FirstOrDefault()?.Domain;
-        if (resumeDomain is not null)
+        var resume = _accounts.Active; // selected account, or most-recent fallback
+        if (resume is not null)
         {
-            var host = new Uri(AppConfig.TenantWebUrl(resumeDomain)).Host;
+            var host = new Uri(AppConfig.TenantWebUrl(resume.Domain)).Host;
             if (_branding.HasLogo(host))
                 Logo.Source = ImageSource.FromFile(_branding.LogoPathFor(host));
         }
@@ -32,16 +32,15 @@ public partial class SplashPage : ContentPage
         // same white background), so there is no separate lingering splash screen.
         await Task.Delay(300);
 
-        if (resumeDomain is null)
+        if (resume is null)
         {
             await Shell.Current.GoToAsync("//identifier", animate: false);
             return;
         }
 
-        // If nothing was selected, auto-select the most-recent account so it resumes (auto-login).
-        if (_accounts.ActiveDomain is null)
-            _accounts.PendingDomain = resumeDomain;
-
+        // Resume that account (auto-login from its saved session).
+        _accounts.PendingAccount = resume;
+        _accounts.PendingForceLogin = false;
         await Shell.Current.GoToAsync("//web", animate: false);
     }
 }

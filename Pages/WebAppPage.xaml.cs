@@ -6,19 +6,31 @@ public partial class WebAppPage : ContentPage
 {
     private readonly AccountStore _accounts;
     private readonly IWebSession _session;
+    private readonly SessionStore _sessionStore;
     private readonly OrgBranding _branding;
+    private readonly UserProfileService _profiles;
 
     private string _loadedDomain = string.Empty;
     private string _url = string.Empty;
+    private string? _activeAccountId;      // the account currently shown in the WebView
+    private Account? _commitAccount;       // a newly-added account awaiting login success
     private bool _loadingAccount;
     private bool _loggingOut;
 
-    public WebAppPage(AccountStore accounts, IWebSession session, OrgBranding branding)
+    public WebAppPage(AccountStore accounts, IWebSession session, SessionStore sessionStore, OrgBranding branding, UserProfileService profiles)
     {
         InitializeComponent();
         _accounts = accounts;
         _session = session;
+        _sessionStore = sessionStore;
         _branding = branding;
+        _profiles = profiles;
+
+#if WINDOWS
+        // Windows has no global cookie store, so hand the active WebView2 to the session as soon as
+        // its handler exists; the session uses it to read/write the cookie jar.
+        Web.HandlerChanged += (_, _) => AttachWindowsWebView();
+#endif
     }
 
     private string SelectorRoute => _accounts.HasAny ? "//accounts" : "//identifier";
@@ -28,9 +40,9 @@ public partial class WebAppPage : ContentPage
         base.OnAppearing();
 
         // An explicit request (switch / add / re-enter) wins over whatever is showing.
-        var pending = _accounts.PendingDomain;
+        var pending = _accounts.PendingAccount;
         var forceLogin = _accounts.PendingForceLogin;
-        _accounts.PendingDomain = null;
+        _accounts.PendingAccount = null;
         _accounts.PendingForceLogin = false;
 
         if (pending is not null)
@@ -45,22 +57,37 @@ public partial class WebAppPage : ContentPage
         if (string.IsNullOrEmpty(_loadedDomain))
         {
             if (_accounts.Active is { } account)
-                await LoadAccountAsync(account.Domain);
+                await LoadAccountAsync(account, forceLogin: false);
             else
                 await Shell.Current.GoToAsync(SelectorRoute, animate: false);
         }
     }
 
-    private async Task LoadAccountAsync(string domain, bool forceLogin = false)
+    private async Task LoadAccountAsync(Account account, bool forceLogin)
     {
         var previousUrl = _url;
+        var previousId = _activeAccountId;
+
+        // Preserve the outgoing account's (possibly refreshed) session before we swap the jar.
+        if (!string.IsNullOrEmpty(previousId) && previousId != account.Id && !string.IsNullOrEmpty(previousUrl))
+        {
+            try { await _session.CaptureAsync(previousId, previousUrl); } catch { /* best-effort */ }
+        }
+
+        // The SPA caches the signed-in user in localStorage (auth_user). Cookies alone aren't enough:
+        // with stale cached identity the SPA boots into the portal, its API calls 401, and the web
+        // app then auto-logs-out (which our bridge turns into a native logout). Wipe the current
+        // page's web storage so the swapped-in session is the single source of truth.
+        if (!string.IsNullOrEmpty(previousUrl))
+            await ClearWebStorageAsync();
+
+        var domain = account.Domain;
         _loadedDomain = domain;
         _url = AppConfig.TenantWebUrl(domain);
+        _activeAccountId = account.Id;
         _loggingOut = false;
-
-        // Drop a stale pending sign-in from an abandoned identifier entry for a different org.
-        if (_accounts.PendingAccount is { } pa && !string.Equals(pa.Domain, domain, StringComparison.OrdinalIgnoreCase))
-            _accounts.PendingAccount = null;
+        // Commit a brand-new (forced-login) account to the saved list only once its portal loads.
+        _commitAccount = forceLogin ? account : null;
 
         // Cover the WebView while the new org loads so the previous account's page never flashes,
         // showing this org's own logo (falls back to the LamaERP wordmark).
@@ -71,20 +98,19 @@ public partial class WebAppPage : ContentPage
         // Safety net in case the "ready" signal is missed.
         Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(8), () => { if (_loadingAccount) EndAccountLoad(); });
 
+#if WINDOWS
+        AttachWindowsWebView();
+#endif
+
         if (forceLogin)
-        {
-            await _session.ClearAsync(_url);          // fresh login for this tenant (e.g. different user)
-            await ClearNativeCookiesAsync(_url);      // and actually empty the native cookie jar (Windows no-ops otherwise)
-        }
+            await _session.ClearAsync(account.Id, _url);     // empty the jar -> the login page shows
         else
-        {
-            await _session.RestoreAsync(_url);        // resume the saved session
-        }
+            await _session.SwitchToAsync(account.Id, _url);  // load this account's saved session
 
         // Re-assigning the same URL won't re-navigate, so the already-rendered SPA would keep the
-        // previous user's session on screen. When reloading the same origin (e.g. adding a second
-        // user of a tenant that's already shown), force a fresh bootstrap now that cookies are gone.
-        if (forceLogin && string.Equals(previousUrl, _url, StringComparison.OrdinalIgnoreCase))
+        // previous session on screen. When the origin is unchanged (e.g. adding/switching a user of
+        // a tenant that's already shown), force a fresh bootstrap now that the jar has been swapped.
+        if (string.Equals(previousUrl, _url, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(previousUrl))
             Web.Reload();
         else
             Web.Source = _url;
@@ -162,9 +188,12 @@ public partial class WebAppPage : ContentPage
         try { await Web.EvaluateJavaScriptAsync(WebBridge.InjectClientTypeJs); }
         catch { /* injection is best-effort */ }
 
-        // Mirror the current (possibly just-issued) auth cookies into SecureStorage.
-        try { await _session.CaptureAsync(_url); }
-        catch { /* capture is best-effort */ }
+        // Mirror the current (possibly just-issued) auth cookies into SecureStorage for this account.
+        if (!string.IsNullOrEmpty(_activeAccountId))
+        {
+            try { await _session.CaptureAsync(_activeAccountId, _url); }
+            catch { /* capture is best-effort */ }
+        }
     }
 
     private void HandleAppCommand(string url)
@@ -186,18 +215,23 @@ public partial class WebAppPage : ContentPage
         if (_loggingOut) return; // the web may signal logout more than once
         _loggingOut = true;
 
-        var domain = _loadedDomain;
+        var accountId = _activeAccountId;
         var url = _url;
 
-        // Clear this org's session (cookie jar + SecureStorage) and forget the saved login.
-        if (!string.IsNullOrEmpty(url))
+        // Clear this account's session (cookie jar + SecureStorage) and forget the saved login.
+        if (!string.IsNullOrEmpty(accountId) && !string.IsNullOrEmpty(url))
         {
-            try { await _session.ClearAsync(url); } catch { /* best-effort */ }
+            try { await _session.ClearAsync(accountId, url); } catch { /* best-effort */ }
         }
-        if (!string.IsNullOrEmpty(domain))
-            _accounts.Remove(domain);
+        if (!string.IsNullOrEmpty(accountId))
+        {
+            _profiles.RemoveAvatar(accountId);
+            _accounts.Remove(accountId);
+        }
 
         _accounts.ClearActive();
+        _activeAccountId = null;
+        _commitAccount = null;
         _loadedDomain = string.Empty;
         _url = string.Empty;
 
@@ -228,26 +262,27 @@ public partial class WebAppPage : ContentPage
         return base.OnBackButtonPressed();
     }
 
-    // Empties the native WebView cookie jar for this origin. Android/iOS clear cookies inside their
-    // IWebSession.ClearAsync, but WebView2 keeps its own persistent jar that ClearAsync can't reach
-    // (it has no WebView reference), so it's purged here where the control is available.
-    private async Task ClearNativeCookiesAsync(string url)
+    // Clears the currently-loaded page's localStorage/sessionStorage (the SPA's cached identity and
+    // per-user caches) so a swapped-in account never inherits the previous user's web-side state.
+    // Runs on the live document, whose origin matches the account we're (re)loading in the cases
+    // that matter (same tenant, or a Debug build where all tenants share localhost).
+    private async Task ClearWebStorageAsync()
     {
-#if WINDOWS
-        if (Web.Handler?.PlatformView is not Microsoft.UI.Xaml.Controls.WebView2 native)
-            return;
-        try
-        {
-            await native.EnsureCoreWebView2Async();
-            var manager = native.CoreWebView2.CookieManager;
-            foreach (var cookie in await manager.GetCookiesAsync(url))
-                manager.DeleteCookie(cookie);
-        }
-        catch { /* best-effort: clearing must never crash the load */ }
-#else
-        await Task.CompletedTask;
-#endif
+        try { await Web.EvaluateJavaScriptAsync("(function(){try{localStorage.clear();sessionStorage.clear();}catch(e){}return 1;})()"); }
+        catch { /* best-effort */ }
     }
+
+#if WINDOWS
+    // Give the live WebView2 to the Windows session so it can read/write the cookie jar.
+    private void AttachWindowsWebView()
+    {
+        if (_session is Platforms.Windows.WindowsWebSession ws &&
+            Web.Handler?.PlatformView is Microsoft.UI.Xaml.Controls.WebView2 native)
+        {
+            ws.View = native;
+        }
+    }
+#endif
 
     private void EndAccountLoad()
     {
@@ -272,19 +307,83 @@ public partial class WebAppPage : ContentPage
         // Cancel bar only on the sign-in pages; portal stays full-screen.
         AuthBar.IsVisible = IsAuthPath(path);
 
-        // Reaching the portal means the user is signed into this org.
-        if (IsPortalPath(path) && !string.IsNullOrEmpty(_loadedDomain))
+        // Reaching the portal means the user is signed into this account.
+        if (IsPortalPath(path) && !string.IsNullOrEmpty(_activeAccountId))
         {
-            // Commit the account to the saved list now that login succeeded (deferred from the
-            // identifier step) so a cancelled sign-in never leaves a logged-out account behind.
-            if (_accounts.PendingAccount is { } pending &&
-                string.Equals(pending.Domain, _loadedDomain, StringComparison.OrdinalIgnoreCase))
+            if (_commitAccount is { } commit && string.Equals(_activeAccountId, commit.Id, StringComparison.Ordinal))
             {
-                _accounts.AddOrUpdate(pending);
-                _accounts.PendingAccount = null;
+                // A newly-added account just signed in — finalize it (identity, de-dupe, save).
+                _commitAccount = null;
+                _ = FinalizeNewAccountAsync(commit);
             }
-            _accounts.SetActive(_loadedDomain);
+            else
+            {
+                _accounts.SetActive(_activeAccountId);
+                _ = RefreshProfileAsync(_activeAccountId); // keep an existing account's name/photo fresh
+            }
         }
+    }
+
+    // After a newly-added account reaches its portal: capture its session, ask the backend who
+    // actually signed in (reliable — not guesswork), and either save it as a new account or — if that
+    // same user of that tenant is already saved — keep the existing one and say it's already added.
+    private async Task FinalizeNewAccountAsync(Account commit)
+    {
+        // Make sure the just-issued login cookies are persisted under this account first.
+        try { await _session.CaptureAsync(commit.Id, _url); } catch { /* best-effort */ }
+
+        var header = await _sessionStore.LoadAsync(commit.Id);
+        var user = await _profiles.FetchAsync(commit.Domain, header);
+
+        var existing = _accounts.FindByUser(commit.Domain, user?.UserId, excludingId: commit.Id);
+        if (existing is not null)
+        {
+            // Same tenant + same user is already saved: don't create a duplicate. Move the fresh
+            // session onto the existing account, drop the throwaway one, and select it.
+            await _sessionStore.SaveAsync(existing.Id, header);
+            _sessionStore.Remove(commit.Id);
+            _activeAccountId = existing.Id;
+            _accounts.SetActive(existing.Id);
+            _ = _profiles.SaveAvatarAsync(existing.Id, existing.Domain, user?.ThumbUrl, header);
+
+            await DisplayAlertAsync("Already added",
+                $"{(string.IsNullOrWhiteSpace(existing.Email) ? existing.Name : existing.Email)} is already in your accounts.",
+                "OK");
+            return;
+        }
+
+        var finalized = commit with
+        {
+            UserKey = user?.UserId ?? string.Empty,
+            Name = user?.Name ?? commit.Name,
+            Email = user?.Email ?? user?.Username,
+        };
+        _accounts.AddOrUpdate(finalized);
+        _accounts.SetActive(finalized.Id);
+        await _profiles.SaveAvatarAsync(finalized.Id, finalized.Domain, user?.ThumbUrl, header);
+    }
+
+    // Refresh a saved account's display name / email / avatar from the backend (best-effort). Repairs
+    // older entries and keeps the photo current; also backfills the user id if it was missed.
+    private async Task RefreshProfileAsync(string accountId)
+    {
+        var account = _accounts.All.FirstOrDefault(a => a.Id == accountId);
+        if (account is null) return;
+
+        var header = await _sessionStore.LoadAsync(accountId);
+        var user = await _profiles.FetchAsync(account.Domain, header);
+        if (user is null) return;
+
+        await _profiles.SaveAvatarAsync(accountId, account.Domain, user.ThumbUrl, header);
+
+        var updated = account with
+        {
+            UserKey = string.IsNullOrEmpty(account.UserKey) ? user.UserId : account.UserKey,
+            Name = user.Name,
+            Email = user.Email ?? user.Username ?? account.Email,
+        };
+        if (updated != account)
+            _accounts.AddOrUpdate(updated);
     }
 
     private static bool IsAuthPath(string path)

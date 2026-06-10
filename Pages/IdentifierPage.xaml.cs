@@ -56,16 +56,17 @@ public partial class IdentifierPage : ContentPage
                 return;
             }
 
-            // Remember the org to sign into, but DON'T save it yet — it's only committed to the
-            // account list once login actually succeeds (so a cancelled sign-in leaves nothing behind).
-            _accounts.PendingAccount = new Account(domain, result.Identifier!, string.IsNullOrWhiteSpace(result.Name) ? domain : result.Name!);
+            // Start a brand-new account (fresh id) to sign into. It's only committed to the saved
+            // list once login actually succeeds (so a cancelled sign-in leaves nothing behind), and
+            // because the id is new, adding another user of the SAME tenant coexists with the first.
+            var name = string.IsNullOrWhiteSpace(result.Name) ? domain : result.Name!;
+            _accounts.PendingAccount = Account.New(domain, name);
 
             // Cache this org's logo now (from the resolve response) so the loading cover shows it.
             await _branding.SaveLogoAsync(domain, result.LogoUrl);
 
-            // Load this org next, forcing a fresh login (so adding another user of the same
-            // tenant shows the login page instead of resuming the existing session).
-            _accounts.PendingDomain = domain;
+            // Load it next, forcing a fresh login (empty jar) so the user enters credentials instead
+            // of resuming any existing session for this tenant.
             _accounts.PendingForceLogin = true;
             await Shell.Current.GoToAsync("//web", animate: false);
         }
