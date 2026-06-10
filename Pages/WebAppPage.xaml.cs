@@ -53,6 +53,7 @@ public partial class WebAppPage : ContentPage
 
     private async Task LoadAccountAsync(string domain, bool forceLogin = false)
     {
+        var previousUrl = _url;
         _loadedDomain = domain;
         _url = AppConfig.TenantWebUrl(domain);
         _loggingOut = false;
@@ -71,11 +72,22 @@ public partial class WebAppPage : ContentPage
         Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(8), () => { if (_loadingAccount) EndAccountLoad(); });
 
         if (forceLogin)
-            await _session.ClearAsync(_url);   // fresh login for this tenant (e.g. different user)
+        {
+            await _session.ClearAsync(_url);          // fresh login for this tenant (e.g. different user)
+            await ClearNativeCookiesAsync(_url);      // and actually empty the native cookie jar (Windows no-ops otherwise)
+        }
         else
-            await _session.RestoreAsync(_url); // resume the saved session
+        {
+            await _session.RestoreAsync(_url);        // resume the saved session
+        }
 
-        Web.Source = _url;
+        // Re-assigning the same URL won't re-navigate, so the already-rendered SPA would keep the
+        // previous user's session on screen. When reloading the same origin (e.g. adding a second
+        // user of a tenant that's already shown), force a fresh bootstrap now that cookies are gone.
+        if (forceLogin && string.Equals(previousUrl, _url, StringComparison.OrdinalIgnoreCase))
+            Web.Reload();
+        else
+            Web.Source = _url;
 
         // Make sure this org's logo is cached so the cover shows it (anonymous, best-effort).
         _ = EnsureLogoAsync(domain);
@@ -214,6 +226,27 @@ public partial class WebAppPage : ContentPage
             return true;
         }
         return base.OnBackButtonPressed();
+    }
+
+    // Empties the native WebView cookie jar for this origin. Android/iOS clear cookies inside their
+    // IWebSession.ClearAsync, but WebView2 keeps its own persistent jar that ClearAsync can't reach
+    // (it has no WebView reference), so it's purged here where the control is available.
+    private async Task ClearNativeCookiesAsync(string url)
+    {
+#if WINDOWS
+        if (Web.Handler?.PlatformView is not Microsoft.UI.Xaml.Controls.WebView2 native)
+            return;
+        try
+        {
+            await native.EnsureCoreWebView2Async();
+            var manager = native.CoreWebView2.CookieManager;
+            foreach (var cookie in await manager.GetCookiesAsync(url))
+                manager.DeleteCookie(cookie);
+        }
+        catch { /* best-effort: clearing must never crash the load */ }
+#else
+        await Task.CompletedTask;
+#endif
     }
 
     private void EndAccountLoad()

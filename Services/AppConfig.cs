@@ -15,7 +15,7 @@ public static class AppConfig
     // e.g. 192.168.1.42). The device must be on the SAME network and the stack must listen on
     // all interfaces. NOTE: the auth cookies are marked Secure, so they are only stored over
     // HTTPS — for a faithful login test, point this at an https dev origin.
-    public const string LocalOrigin = "http://192.168.1.42:5001";
+    public const string LocalOrigin = "http://localhost:5001";
 
     /// <summary>Marks every request from this app so the backend grants the longer
     /// mobile refresh-token lifetime (see ClientType.Mobile / X-Client-Type).</summary>
