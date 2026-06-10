@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="456" height="456" viewBox="0 0 456 456" fill="none">
+  <!-- "L" mark from the lama logo, enlarged and centered within the adaptive-icon safe zone -->
+  <g transform="translate(146 124)">
+    <rect x="0" y="0" width="40" height="208" rx="20" fill="#FFFFFF"/>
+    <rect x="0" y="168" width="164" height="40" rx="20" fill="#FFFFFF"/>
+    <rect x="128" y="0" width="40" height="128" rx="20" fill="#F59E0B"/>
+  </g>
+</svg>

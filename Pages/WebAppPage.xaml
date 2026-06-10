@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             x:Class="LamaERP.Mobile.WebApp.Pages.WebAppPage"
+             ios:Page.UseSafeArea="True"
+             BackgroundColor="{StaticResource Surface}"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Slim bar shown only on the sign-in pages so the user can back out to the
+             organization picker. Hidden on the portal (full-screen web). -->
+        <Grid Grid.Row="0"
+              x:Name="AuthBar"
+              IsVisible="False"
+              BackgroundColor="{StaticResource Primary}"
+              Padding="10,8">
+            <Button Text="‹  Cancel"
+                    Clicked="OnCancelAuthClicked"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource TextOnPrimary}"
+                    FontSize="15"
+                    Padding="10,4"
+                    HorizontalOptions="Start" />
+        </Grid>
+
+        <!-- Full-screen tenant web app. Pull-to-refresh is handled by injected JS
+             (WebBridge) on the web's own scroll container, so nothing wraps the WebView
+             and intercepts taps on the portal bar. -->
+        <WebView x:Name="Web"
+                 Grid.Row="1"
+                 Navigating="OnNavigating"
+                 Navigated="OnNavigated" />
+
+        <ActivityIndicator x:Name="Busy"
+                           Grid.Row="1"
+                           IsRunning="True"
+                           IsVisible="True"
+                           Color="{StaticResource Primary}"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center" />
+
+        <!-- Opaque cover shown while switching organizations so the previous account never flashes. -->
+        <Grid x:Name="LoadOverlay"
+              Grid.RowSpan="2"
+              IsVisible="False"
+              BackgroundColor="{StaticResource Surface}">
+            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="24">
+                <Image x:Name="OverlayLogo" Source="lama_logo.png" HeightRequest="76" MaximumWidthRequest="260" Aspect="AspectFit" HorizontalOptions="Center" />
+                <ActivityIndicator x:Name="OverlaySpinner" IsRunning="False" Color="{StaticResource Primary}" HorizontalOptions="Center" />
+            </VerticalStackLayout>
+        </Grid>
+    </Grid>
+</ContentPage>

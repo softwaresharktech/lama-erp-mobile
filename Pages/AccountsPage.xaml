@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pages="clr-namespace:LamaERP.Mobile.WebApp.Pages"
+             x:Class="LamaERP.Mobile.WebApp.Pages.AccountsPage"
+             x:DataType="pages:AccountsPage"
+             BackgroundColor="{StaticResource Surface}"
+             Shell.NavBarIsVisible="False">
+
+    <Grid x:Name="Sheet" RowDefinitions="Auto,Auto,*" Padding="0">
+
+        <!-- Top bar: matches the sign-in bar (navy, Cancel left / title / + right) -->
+        <Grid Grid.Row="0"
+              BackgroundColor="{StaticResource Primary}"
+              ColumnDefinitions="Auto,*,Auto"
+              Padding="4,8">
+            <Button Grid.Column="0"
+                    x:Name="CancelButton"
+                    Text="‹  Cancel"
+                    Clicked="OnCancelClicked"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource TextOnPrimary}"
+                    FontSize="15"
+                    Padding="10,4"
+                    HorizontalOptions="Start" />
+
+            <Label Grid.Column="1"
+                   Text="Accounts"
+                   TextColor="{StaticResource TextOnPrimary}"
+                   FontAttributes="Bold"
+                   FontSize="15"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center" />
+
+            <Button Grid.Column="2"
+                    Text="+"
+                    Clicked="OnAddClicked"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource TextOnPrimary}"
+                    FontSize="24"
+                    WidthRequest="48"
+                    HeightRequest="44"
+                    Padding="0" />
+        </Grid>
+
+        <!-- Brand + heading -->
+        <VerticalStackLayout Grid.Row="1" Spacing="14" Padding="28,12,28,20">
+            <Image Source="lama_logo.png"
+                   HeightRequest="40"
+                   Aspect="AspectFit"
+                   HorizontalOptions="Center" />
+            <Label Text="Choose an account"
+                   FontFamily="JakartaSans"
+                   FontSize="22"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource TextPrimary}"
+                   HorizontalTextAlignment="Center" />
+            <Label Text="Pick a saved organization, or add another."
+                   FontFamily="JakartaSans"
+                   FontSize="14"
+                   TextColor="{StaticResource TextSecondary}"
+                   HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+
+        <!-- Saved accounts -->
+        <CollectionView Grid.Row="2"
+                        x:Name="AccountsList"
+                        Margin="16,0,16,16"
+                        SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="pages:AccountItem">
+                    <Grid Padding="12,12" ColumnDefinitions="48,*,Auto" ColumnSpacing="14">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnAccountTapped" />
+                        </Grid.GestureRecognizers>
+
+                        <!-- Avatar -->
+                        <Border Grid.Column="0"
+                                WidthRequest="44" HeightRequest="44"
+                                BackgroundColor="{StaticResource Primary}"
+                                StrokeThickness="0">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="22" />
+                            </Border.StrokeShape>
+                            <Label Text="{Binding Initial}"
+                                   TextColor="{StaticResource TextOnPrimary}"
+                                   FontFamily="JakartaSans"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="{Binding Account.Name}"
+                                   FontFamily="JakartaSans"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource TextPrimary}"
+                                   LineBreakMode="TailTruncation" />
+                            <Label Text="{Binding Account.Domain}"
+                                   FontFamily="JakartaSans"
+                                   FontSize="13"
+                                   TextColor="{StaticResource TextTertiary}"
+                                   LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+
+                        <Label Grid.Column="2"
+                               Text="✓"
+                               IsVisible="{Binding IsActive}"
+                               TextColor="{StaticResource Primary}"
+                               FontSize="20"
+                               FontAttributes="Bold"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:pages="clr-namespace:LamaERP.Mobile.WebApp.Pages"
+       x:Class="LamaERP.Mobile.WebApp.AppShell"
+       FlyoutBehavior="Disabled">
+
+    <!-- Shown first: brand splash that decides where to go (and shows the org logo). -->
+    <ShellContent Route="splash"
+                  ContentTemplate="{DataTemplate pages:SplashPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <!-- Step 1: enter your organization address -->
+    <ShellContent Route="identifier"
+                  ContentTemplate="{DataTemplate pages:IdentifierPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <!-- Account selector / hub: switch, add, or (after logout) pick an account -->
+    <ShellContent Route="accounts"
+                  ContentTemplate="{DataTemplate pages:AccountsPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <!-- Step 2: the tenant web app runs inside a WebView -->
+    <ShellContent Route="web"
+                  ContentTemplate="{DataTemplate pages:WebAppPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+</Shell>

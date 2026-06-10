@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
+  
+  <rect x="0" y="8" width="6" height="32" rx="3" fill="#1C3F6E"></rect>
+  <rect x="0" y="34" width="26" height="6" rx="3" fill="#1C3F6E"></rect>
+  <rect x="20" y="8" width="6" height="20" rx="3" fill="#F59E0B"></rect>
+
+  
+  <text x="38" y="34" font-family="&#39;Plus Jakarta Sans&#39;, sans-serif" font-size="22" font-weight="700" fill="#1C3F6E" letter-spacing="-0.5">lama</text>
+
+  
+  <text x="39" y="45" font-family="&#39;Plus Jakarta Sans&#39;, sans-serif" font-size="8" font-weight="500" fill="#6B7280" letter-spacing="2.5">ERP</text>
+</svg>

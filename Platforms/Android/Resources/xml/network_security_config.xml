@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Production traffic stays HTTPS-only (Android's default).
+        Cleartext HTTP is permitted ONLY for the local development origins below, so you can
+        test against a backend running on your PC over Wi-Fi. Keep these in sync with
+        AppConfig.LocalOrigin.
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>      <!-- Android emulator -> host machine -->
+        <domain includeSubdomains="false">localhost</domain>
+        <!-- ↓ Replace with your PC's LAN IPv4 (must match AppConfig.LocalOrigin) -->
+        <domain includeSubdomains="false">192.168.1.42</domain>
+    </domain-config>
+</network-security-config>

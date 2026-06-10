@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LamaERP.Mobile.WebApp.Pages.IdentifierPage"
+             BackgroundColor="{StaticResource Surface}"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto,*">
+
+      <!-- Top bar: only shown when there are other saved logins to go back to (matches the
+           sign-in / account-selector bar). Holds just the Cancel button. -->
+      <Grid Grid.Row="0"
+            x:Name="TopBar"
+            IsVisible="False"
+            BackgroundColor="{StaticResource Primary}"
+            Padding="4,8">
+          <Button x:Name="CancelButton"
+                  Text="‹  Cancel"
+                  Clicked="OnCancelClicked"
+                  BackgroundColor="Transparent"
+                  TextColor="{StaticResource TextOnPrimary}"
+                  FontSize="15"
+                  Padding="10,4"
+                  HorizontalOptions="Start" />
+      </Grid>
+
+      <ScrollView Grid.Row="1">
+        <Grid RowDefinitions="*,Auto,*"
+              Padding="28,0"
+              MaximumWidthRequest="460"
+              HorizontalOptions="Center">
+
+            <VerticalStackLayout Grid.Row="1" Spacing="0" VerticalOptions="Center">
+
+                <!-- Brand logo (design/logo/lama-logo.svg) -->
+                <Image Source="lama_logo.png"
+                       HeightRequest="48"
+                       Aspect="AspectFit"
+                       HorizontalOptions="Center"
+                       Margin="0,0,0,40" />
+
+                <Label Text="Sign in to your workspace"
+                       FontFamily="JakartaSans"
+                       FontSize="24"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource TextPrimary}"
+                       HorizontalTextAlignment="Center" />
+
+                <Label Text="Enter your organization address to continue."
+                       FontFamily="JakartaSans"
+                       FontSize="15"
+                       TextColor="{StaticResource TextSecondary}"
+                       HorizontalTextAlignment="Center"
+                       Margin="0,8,0,28" />
+
+                <!-- Domain entry -->
+                <Border x:Name="DomainBorder"
+                        Stroke="{StaticResource Border}"
+                        StrokeThickness="1.5"
+                        BackgroundColor="{StaticResource Surface}"
+                        Padding="16,4">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="14" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="DomainEntry"
+                           Placeholder="your-org.lamaerp.com"
+                           Keyboard="Url"
+                           ReturnType="Go"
+                           Completed="OnContinueClicked"
+                           HeightRequest="50" />
+                </Border>
+
+                <Label x:Name="ErrorLabel"
+                       IsVisible="False"
+                       TextColor="{StaticResource Danger}"
+                       FontFamily="JakartaSans"
+                       FontSize="13.5"
+                       Margin="4,10,4,0" />
+
+                <Button x:Name="ContinueButton"
+                        Text="Continue"
+                        Clicked="OnContinueClicked"
+                        Margin="0,24,0,0" />
+
+                <ActivityIndicator x:Name="Busy"
+                                   IsRunning="False"
+                                   IsVisible="False"
+                                   Margin="0,18,0,0" />
+
+                <Label Text="Secure access to your LamaERP workspace"
+                       FontFamily="JakartaSans"
+                       FontSize="12"
+                       TextColor="{StaticResource TextTertiary}"
+                       HorizontalTextAlignment="Center"
+                       Margin="0,40,0,0" />
+            </VerticalStackLayout>
+        </Grid>
+      </ScrollView>
+    </Grid>
+</ContentPage>

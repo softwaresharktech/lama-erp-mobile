@@ -1,0 +1,73 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.nupkg
+*.snupkg
+
+# MSBuild / build artifacts
+*.binlog
+*.tlog
+
+# MAUI / Mobile specific
+*.aab
+*.apk
+*.ipa
+*.app
+*.dSYM/
+*.keystore
+!debug.keystore
+*.jks
+*.mobileprovision
+*.p12
+*.cer
+
+# Resizetizer / generated assets cache
+.maui/
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nuget.props
+*.nuget.targets
+packages/
+!packages/build/
+
+# Rider
+*.sln.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# User secrets / local config
+*.local.json
+appsettings.*.local.json
+secrets.json
+
+# Backup & temp files
+*.bak
+*.tmp
+*.swp
+*~

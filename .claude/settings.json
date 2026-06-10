@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Projects/FinalLamaErp/**)",
+      "Bash(ls \"c:/Projects/\" 2>/dev/null; echo \"---frontend in repo?---\"; find \"c:/Projects/FinalLamaErp\" -maxdepth 3 -iname \"package.json\" -not -path \"*/node_modules/*\" -not -path \"*/bin/*\" -not -path \"*/obj/*\" 2>/dev/null | head; echo \"---wwwroot/spa---\"; find \"c:/Projects/FinalLamaErp/src\" -maxdepth 2 -type d -iname \"*client*\" -o -maxdepth 2 -type d -iname \"*web*\" -o -maxdepth 2 -type d -iname \"*frontend*\" 2>/dev/null | head)",
+      "Read(//c/Projects/**)",
+      "Bash(set -e)",
+      "Bash(mkdir -p __TRACKED_VAR__/Resources/Fonts __TRACKED_VAR__/Resources/Images __TRACKED_VAR__/Resources/AppIcon __TRACKED_VAR__/Resources/Splash __TRACKED_VAR__/Resources/Styles __TRACKED_VAR__/Pages __TRACKED_VAR__/Services __TRACKED_VAR__/Platforms/Android/Resources/xml __TRACKED_VAR__/Platforms/Windows __TRACKED_VAR__/Platforms/iOS)",
+      "Bash(cp __TRACKED_VAR__/Resources/Fonts/PlusJakartaSans.ttf __TRACKED_VAR__/Resources/Fonts/PlusJakartaSans.ttf)",
+      "Bash(cp __TRACKED_VAR__/design/logo/lama-logo.svg __TRACKED_VAR__/Resources/Images/lama_logo.svg)",
+      "PowerShell(dotnet --version)",
+      "PowerShell(dotnet workload list)",
+      "PowerShell(dotnet build \"c:\\\\Projects\\\\mobile\\\\LamaERP.Mobile.WebApp.csproj\" -f net10.0-windows10.0.19041.0 -c Debug 2>&1)",
+      "PowerShell(dotnet build \"c:\\\\Projects\\\\mobile\\\\LamaERP.Mobile.WebApp.csproj\" -f net10.0-android -c Debug 2>&1)",
+      "PowerShell(dotnet build \"c:\\\\Projects\\\\mobile\\\\LamaERP.Mobile.WebApp.csproj\" -f net10.0-windows10.0.19041.0 -c Release 2>&1)",
+      "PowerShell(Get-Process -Name \"LamaERP.Mobile.WebApp\" -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(dotnet build \"c:\\\\Projects\\\\mobile\\\\LamaERP.Mobile.WebApp.csproj\" -f net10.0-android -c Release -p:AndroidPackageFormat=apk 2>&1)",
+      "PowerShell(dotnet build \"c:\\\\Projects\\\\mobile\\\\LamaERP.Mobile.WebApp.csproj\" -f net10.0-android -c Release -t:Run -p:AndroidPackageFormat=apk -p:AdbTarget=\"-s 809edc7f\" 2>&1)",
+      "PowerShell($adb = \"C:\\\\Users\\\\Bipin\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\")",
+      "PowerShell(Start-Process -FilePath $exe)",
+      "PowerShell($exe = \"c:\\\\Projects\\\\mobile\\\\bin\\\\Release\\\\net10.0-windows10.0.19041.0\\\\win-x64\\\\LamaERP.Mobile.WebApp.exe\")",
+      "PowerShell(dotnet build \"c:\\\\Projects\\\\mobile\\\\LamaERP.Mobile.WebApp.csproj\" -f net10.0-android -c Release -p:AndroidPackageFormat=apk -p:RuntimeIdentifier=android-arm64 -p:RunAOTCompilation=false 2>&1)",
+      "Bash(git --version)",
+      "Bash(git init *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Projects\\FinalLamaErp\\frontend\\tenant\\src\\components",
+      "c:\\Projects\\FinalLamaErp\\frontend\\tenant\\src\\pages\\apps",
+      "c:\\Projects\\FinalLamaErp\\frontend\\tenant\\src\\pages\\auth",
+      "c:\\Projects\\FinalLamaErp\\frontend\\tenant\\src\\stores"
+    ]
+  }
+}

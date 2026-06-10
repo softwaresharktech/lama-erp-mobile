@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" fill="none">
+  <!-- Intentionally blank on a white background: the native OS splash stays neutral so the
+       FIRST logo the user sees is the per-organization logo (shown by the in-app splash),
+       not the LamaERP mark. The LamaERP brand remains the launcher icon. -->
+  <rect width="200" height="200" fill="#FFFFFF"/>
+</svg>
