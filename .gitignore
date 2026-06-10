@@ -66,6 +66,9 @@ desktop.ini
 appsettings.*.local.json
 secrets.json
 
+# Claude Code local config
+.claude/
+
 # Backup & temp files
 *.bak
 *.tmp
