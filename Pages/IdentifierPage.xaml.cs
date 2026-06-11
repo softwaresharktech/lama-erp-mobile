@@ -62,8 +62,10 @@ public partial class IdentifierPage : ContentPage
             var name = string.IsNullOrWhiteSpace(result.Name) ? domain : result.Name!;
             _accounts.PendingAccount = Account.New(domain, name);
 
-            // Cache this org's logo now (from the resolve response) so the loading cover shows it.
-            await _branding.SaveLogoAsync(domain, result.LogoUrl);
+            // Cache this org's logo (from the resolve response) so the loading cover can show it.
+            // Fire-and-forget: don't make the user wait on an image download before the login page
+            // starts loading — the cover falls back to the LamaERP logo until this lands.
+            _ = _branding.SaveLogoAsync(domain, result.LogoUrl);
 
             // Load it next, forcing a fresh login (empty jar) so the user enters credentials instead
             // of resuming any existing session for this tenant.

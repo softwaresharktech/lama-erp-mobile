@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Associated Domains for passkeys (WebAuthn). For the native passkey bridge to honour a Relying
+	  Party ID, that host must be covered here AND serve /.well-known/apple-app-site-association listing
+	  this app (TEAMID.com.lamaerp.app under "webcredentials").
+
+	  The app uses a FIXED mobile RP ID (the backend issues it for X-Client-Type: mobile — see
+	  PASSKEYS-MOBILE.md), so passkeys work on every tenant, INCLUDING custom domains, with just this
+	  one static domain. "lamaerp.com" is the fixed RP host; the *.lamaerp.com wildcard is kept so a
+	  per-host RP would still work for subdomain tenants if ever re-enabled. Note: the wildcard does NOT
+	  cover the apex, hence the explicit "lamaerp.com" entry.
+
+	  If you change the fixed RP ID (PasskeyMobileSettings.RpId), update this list to match and ship a
+	  new build. Requires the "Associated Domains" capability enabled on the App ID in the Apple
+	  Developer portal.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>webcredentials:lamaerp.com</string>
+		<string>webcredentials:*.lamaerp.com</string>
+	</array>
+</dict>
+</plist>

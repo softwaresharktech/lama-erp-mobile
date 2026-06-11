@@ -24,6 +24,21 @@ public static class WebBridge
             }
             try { window.dispatchEvent(new Event('lama-mobile-ready')); } catch (e) { }
 
+            // Lock the viewport so the WebView feels like native chrome — no pinch / double-tap zoom.
+            // Re-applied on every injection because the SPA may set its own viewport meta on boot.
+            try {
+                var vp = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover';
+                var meta = document.querySelector('meta[name=viewport]');
+                if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'viewport'); (document.head || document.documentElement).appendChild(meta); }
+                meta.setAttribute('content', vp);
+            } catch (e) { }
+            if (!window.__lamaNoZoom) {
+                window.__lamaNoZoom = true;
+                // iOS WKWebView honours these to block pinch / double-tap zoom regardless of viewport.
+                try { document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false }); } catch (e) { }
+                try { document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false }); } catch (e) { }
+            }
+
             // Android's System WebView exposes the Credential Management API (window.PasswordCredential)
             // but throws "user agent does not support public key credentials" when storing. The tenant
             // login calls navigator.credentials.store() after a successful sign-in; the throw aborts the
