@@ -25,19 +25,35 @@ public static class WebBridge
             try { window.dispatchEvent(new Event('lama-mobile-ready')); } catch (e) { }
 
             // Lock the viewport so the WebView feels like native chrome — no pinch / double-tap zoom.
-            // Re-applied on every injection because the SPA may set its own viewport meta on boot.
+            // The SPA replaces the viewport meta while mounting, so a one-shot set isn't enough: we
+            // re-assert ours and keep watching for changes (MutationObserver), otherwise the SPA's
+            // meta wins and zoom comes back.
             try {
-                var vp = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover';
-                var meta = document.querySelector('meta[name=viewport]');
-                if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'viewport'); (document.head || document.documentElement).appendChild(meta); }
-                meta.setAttribute('content', vp);
+                var VP = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover';
+                var lockViewport = function () {
+                    var m = document.querySelector('meta[name=viewport]');
+                    if (!m) { m = document.createElement('meta'); m.setAttribute('name', 'viewport'); (document.head || document.documentElement).appendChild(m); }
+                    if (m.getAttribute('content') !== VP) m.setAttribute('content', VP);
+                };
+                lockViewport();
+                if (!window.__lamaNoZoom) {
+                    window.__lamaNoZoom = true;
+                    try {
+                        var mo = new MutationObserver(lockViewport);
+                        mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['content'] });
+                    } catch (e) { }
+                    // iOS WKWebView: block the pinch zoom gestures outright.
+                    try { document.addEventListener('gesturestart', function (e) { if (e.cancelable) e.preventDefault(); }, { passive: false }); } catch (e) { }
+                    try { document.addEventListener('gesturechange', function (e) { if (e.cancelable) e.preventDefault(); }, { passive: false }); } catch (e) { }
+                    // Block the synthesized double-tap-to-zoom (a second tap within 300ms).
+                    var __lastTap = 0;
+                    try { document.addEventListener('touchend', function (e) {
+                        var now = Date.now();
+                        if (now - __lastTap <= 300 && e.cancelable) e.preventDefault();
+                        __lastTap = now;
+                    }, { passive: false }); } catch (e) { }
+                }
             } catch (e) { }
-            if (!window.__lamaNoZoom) {
-                window.__lamaNoZoom = true;
-                // iOS WKWebView honours these to block pinch / double-tap zoom regardless of viewport.
-                try { document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false }); } catch (e) { }
-                try { document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false }); } catch (e) { }
-            }
 
             // Android's System WebView exposes the Credential Management API (window.PasswordCredential)
             // but throws "user agent does not support public key credentials" when storing. The tenant

@@ -157,6 +157,36 @@ Then re-run the install. Approve any on-device popup.
 
 ---
 
+## Build & run — iOS (macOS only)
+
+`net10.0-ios` only builds on a Mac (`dotnet workload install maui-ios`). Run on the iOS **Simulator**:
+
+### 1. List simulators (get the UDID)
+```bash
+xcrun simctl list devices              # all simulators, grouped by runtime
+xcrun simctl list devices available    # only installed/usable runtimes
+xcrun simctl list devices booted       # only currently-running ones
+# boot one if needed:
+xcrun simctl boot "3F15F531-8001-42DE-A5AE-01F53AB01115"   # or: xcrun simctl boot "iPhone 16 Pro"
+open -a Simulator
+```
+
+### 2. Build for the simulator
+```bash
+dotnet build -f net10.0-ios -c Release -p:RuntimeIdentifier=iossimulator-arm64
+```
+
+### 3. Build + run on a specific simulator (by UDID)
+```bash
+dotnet build -t:Run -f net10.0-ios -c Release \
+  -p:_DeviceName=:v2:udid=3F15F531-8001-42DE-A5AE-01F53AB01115
+```
+
+> Passkeys can't be exercised on the Simulator (no real authenticator) — use a real device via
+> TestFlight for that. The Simulator is fine for UI, zoom/orientation, and the WebView flow.
+
+---
+
 ## Configuration
 
 | What | Where |
