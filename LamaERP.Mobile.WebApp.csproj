@@ -27,6 +27,10 @@
     <RuntimeIdentifiers Condition="$(TargetFramework.StartsWith('net10.0-android'))">android-arm64;android-x64</RuntimeIdentifiers>
     <RuntimeIdentifier Condition="$(TargetFramework.StartsWith('net10.0-windows'))">win-x64</RuntimeIdentifier>
 
+    <!-- Work around XAGNM7009 (marshal-methods native codegen crashes on multi-ABI Release builds).
+         Disabling marshal methods is safe — it's a JNI codegen optimization, not a feature. -->
+    <AndroidEnableMarshalMethods Condition="$(TargetFramework.StartsWith('net10.0-android'))">false</AndroidEnableMarshalMethods>
+
     <!-- Associated Domains entitlement (webcredentials) needed for iOS passkeys. -->
     <CodesignEntitlements Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">Platforms/iOS/Entitlements.plist</CodesignEntitlements>
 
