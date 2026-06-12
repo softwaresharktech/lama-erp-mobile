@@ -124,18 +124,14 @@ public sealed class IosPasskeyBridge : NSObject, IWKScriptMessageHandler,
         var id = _pendingId;
         try
         {
-            switch (authorization.GetCredential())
-            {
-                case ASAuthorizationPlatformPublicKeyCredentialRegistration reg:
-                    ResolveRegistration(id, reg);
-                    break;
-                case ASAuthorizationPlatformPublicKeyCredentialAssertion asr:
-                    ResolveAssertion(id, asr);
-                    break;
-                default:
-                    Reject(id, "NotAllowedError", "Unexpected credential type.");
-                    break;
-            }
+            // GetCredential<T>() is the typed accessor on this SDK; it returns null when the actual
+            // credential isn't that type, so try registration first, then assertion.
+            if (authorization.GetCredential<ASAuthorizationPlatformPublicKeyCredentialRegistration>() is { } reg)
+                ResolveRegistration(id, reg);
+            else if (authorization.GetCredential<ASAuthorizationPlatformPublicKeyCredentialAssertion>() is { } asr)
+                ResolveAssertion(id, asr);
+            else
+                Reject(id, "NotAllowedError", "Unexpected credential type.");
         }
         catch (Exception ex)
         {
