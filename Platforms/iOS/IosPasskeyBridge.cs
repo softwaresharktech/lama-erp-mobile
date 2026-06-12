@@ -75,7 +75,8 @@ public sealed class IosPasskeyBridge : NSObject, IWKScriptMessageHandler,
         var request = provider.CreateCredentialRegistrationRequest(
             NSData.FromArray(challenge), userName, NSData.FromArray(userId));
 
-        if (TryGetUserVerification(pk, out var uv)) request.UserVerificationPreference = uv;
+        var uv = GetUserVerification(pk);
+        if (uv is not null) request.UserVerificationPreference = uv;
 
         Run(request);
     }
@@ -99,7 +100,8 @@ public sealed class IosPasskeyBridge : NSObject, IWKScriptMessageHandler,
             request.AllowedCredentials = descriptors.ToArray();
         }
 
-        if (TryGetUserVerification(pk, out var uv)) request.UserVerificationPreference = uv;
+        var uv = GetUserVerification(pk);
+        if (uv is not null) request.UserVerificationPreference = uv;
 
         Run(request);
     }
@@ -219,24 +221,16 @@ public sealed class IosPasskeyBridge : NSObject, IWKScriptMessageHandler,
     // JSON-encode a string into a safe JS string literal (handles quotes/newlines/unicode).
     private static string Js(string value) => JsonSerializer.Serialize(value);
 
-    private static bool TryGetUserVerification(JsonElement pk, out ASAuthorizationPublicKeyCredentialUserVerificationPreference uv)
+    // WebAuthn userVerification ("required" / "preferred" / "discouraged"). The ASAuthorization
+    // request's UserVerificationPreference takes these same string values, so pass it straight through.
+    private static string? GetUserVerification(JsonElement pk)
     {
-        uv = ASAuthorizationPublicKeyCredentialUserVerificationPreference.Preferred;
-        string? v = null;
         if (pk.TryGetProperty("userVerification", out var direct) && direct.ValueKind == JsonValueKind.String)
-            v = direct.GetString();
-        else if (pk.TryGetProperty("authenticatorSelection", out var sel) && sel.ValueKind == JsonValueKind.Object
-                 && sel.TryGetProperty("userVerification", out var nested) && nested.ValueKind == JsonValueKind.String)
-            v = nested.GetString();
-
-        if (v is null) return false;
-        uv = v switch
-        {
-            "required" => ASAuthorizationPublicKeyCredentialUserVerificationPreference.Required,
-            "discouraged" => ASAuthorizationPublicKeyCredentialUserVerificationPreference.Discouraged,
-            _ => ASAuthorizationPublicKeyCredentialUserVerificationPreference.Preferred,
-        };
-        return true;
+            return direct.GetString();
+        if (pk.TryGetProperty("authenticatorSelection", out var sel) && sel.ValueKind == JsonValueKind.Object
+            && sel.TryGetProperty("userVerification", out var nested) && nested.ValueKind == JsonValueKind.String)
+            return nested.GetString();
+        return null;
     }
 }
 
