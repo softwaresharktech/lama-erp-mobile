@@ -76,7 +76,7 @@ public sealed class IosPasskeyBridge : NSObject, IWKScriptMessageHandler,
             NSData.FromArray(challenge), userName, NSData.FromArray(userId));
 
         var uv = GetUserVerification(pk);
-        if (uv is not null) request.UserVerificationPreference = uv;
+        if (uv is not null) request.UserVerificationPreference = new NSString(uv);
 
         Run(request);
     }
@@ -101,7 +101,7 @@ public sealed class IosPasskeyBridge : NSObject, IWKScriptMessageHandler,
         }
 
         var uv = GetUserVerification(pk);
-        if (uv is not null) request.UserVerificationPreference = uv;
+        if (uv is not null) request.UserVerificationPreference = new NSString(uv);
 
         Run(request);
     }
@@ -124,7 +124,7 @@ public sealed class IosPasskeyBridge : NSObject, IWKScriptMessageHandler,
         var id = _pendingId;
         try
         {
-            switch (authorization.Credential)
+            switch (authorization.GetCredential())
             {
                 case ASAuthorizationPlatformPublicKeyCredentialRegistration reg:
                     ResolveRegistration(id, reg);
